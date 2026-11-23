@@ -8,5 +8,4 @@
 * **OS별 맞춤 가이드:** RedHat(CentOS/Rocky) 계열과 Debian(Ubuntu) 계열의 명령어 및 경로 차이를 반영하여 실무 적용의 정확도를 높였습니다.
 * **장애 예방 경고:** 무분별한 조치로 인한 서비스 장애를 방지하기 위해, 실무에서 반드시 확인해야 할 주의사항(Warning)을 포함했습니다.
 
-## 🔗 웹에서 바로 보기
-[실무형 CCE 취약점 조치 가이드 보기](https://[아이디].github.io/cce-guide/unix_practical_vuln_guide_final.html)
+🔗 **[실무형 CCE 취약점 조치 가이드 보기](https://janghani01.github.io/cce-guide/unix_practical_vuln_guide_final.html)**
