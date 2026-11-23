@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실무형 CCE 취약점 조치 가이드</title>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e293b;
+            --secondary: #475569;
+            --accent: #4f46e5;
+            --bg-color: #f8fafc;
+            --sidebar-bg: #ffffff;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --code-bg: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            color: var(--primary);
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 380px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.03);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            margin: 0 0 12px 0;
+            font-weight: 700;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            box-sizing: border-box;
+            background: #f1f5f9;
+        }
+
+        .search-box:focus { outline: 2px solid var(--accent); background: #fff; }
+
+        #item-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 0;
+            padding: 12px;
+            list-style: none;
+        }
+
+        .list-item {
+            padding: 14px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            transition: 0.15s;
+        }
+
+        .list-item:hover { background-color: #f1f5f9; }
+        .list-item.active { background-color: #e0e7ff; }
+        
+        .item-id {
+            background: var(--accent);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-right: 12px;
+            min-width: 35px;
+            text-align: center;
+        }
+
+        .item-title-text { font-size: 0.95rem; font-weight: 500; line-height: 1.3; }
+        .active .item-title-text { color: var(--accent); font-weight: 700; }
+
+        /* Main Content */
+        #content-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 40px;
+        }
+
+        .card {
+            background: white;
+            max-width: 950px;
+            margin: 0 auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 40px;
+            display: none;
+        }
+        .card.show { display: block; }
+
+        .card-header { margin-bottom: 30px; border-bottom: 2px solid var(--border); padding-bottom: 20px; }
+        .card-header h2 { font-size: 2rem; margin: 0; display: flex; align-items: center; gap: 16px; }
+        .card-id-badge { background: var(--accent); color: white; padding: 6px 16px; border-radius: 8px; font-size: 1.2rem; }
+
+        .section { margin-bottom: 30px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        
+        .section-title { 
+            padding: 16px 20px; 
+            margin: 0; 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+        }
+        
+        .vuln-title { background: #fef2f2; color: #991b1b; border-bottom: 1px solid #fee2e2; }
+        .check-title { background: #f8fafc; color: #0f172a; border-bottom: 1px solid var(--border); }
+        .action-title { background: #f0fdf4; color: #166534; border-bottom: 1px solid #dcfce7; }
+
+        .section-content { padding: 20px; font-size: 1.05rem; line-height: 1.6; }
+
+        .warning-box {
+            background: #fffbeb;
+            border-left: 4px solid var(--warning);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            color: #92400e;
+            font-weight: 500;
+        }
+
+        pre {
+            background: var(--code-bg);
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            margin: 12px 0;
+            white-space: pre-wrap;
+        }
+
+        /* Tabs for OS */
+        .os-tabs { display: flex; gap: 8px; margin-bottom: -1px; }
+        .os-tab {
+            padding: 10px 20px;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        .os-tab.active { background: white; color: var(--accent); }
+        .os-content { border: 1px solid var(--border); padding: 20px; border-radius: 0 8px 8px 8px; display: none; }
+        .os-content.active { display: block; }
+
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1>🛡️ 실무형 CCE 조치 가이드<br><span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">UNIX / LINUX 서버 (64항목)</span></h1>
+            <input type="text" id="searchInput" class="search-box" placeholder="항목코드 또는 검색어 입력...">
+        </div>
+        <ul id="item-list"></ul>
+    </div>
+
+    <div id="content-area">
+        <div id="empty-state" style="text-align: center; color: #94a3b8; margin-top: 20vh; font-size: 1.2rem;">
+            👈 좌측 리스트에서 취약점 항목을 선택해주세요.<br>
+            (모든 64개 항목의 실제 이름이 적용되었습니다!)
+        </div>
+
+        <div id="card" class="card">
+            <div class="card-header">
+                <h2><span id="c-id" class="card-id-badge"></span> <span id="c-title"></span></h2>
+            </div>
+            
+            <div id="c-warning" class="warning-box"></div>
+
+            <div class="section">
+                <h3 class="section-title vuln-title">💣 취약점 위험성 (왜 조치해야 하는가?)</h3>
+                <div id="c-vuln" class="section-content"></div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title check-title">🔍 점검 방법 및 예시 (As-Is)</h3>
+                <div class="section-content">
+                    <div id="c-check" style="margin-bottom: 12px; font-weight: 500;"></div>
+                    <strong>명령어:</strong>
+                    <pre id="c-check-cmd"></pre>
+                    <strong>결과 판별:</strong>
+                    <pre id="c-check-ex" style="background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0;"></pre>
+                </div>
+            </div>
+
+            <div class="section" style="border: none;">
+                <h3 class="section-title action-title" style="border: 1px solid #dcfce7; border-radius: 10px 10px 0 0;">✅ OS별 조치 방법 (To-Be)</h3>
+                
+                <div class="os-tabs" style="margin-top: 16px;">
+                    <div class="os-tab active" onclick="switchTab('rh')">RedHat / CentOS / Rocky</div>
+                    <div class="os-tab" onclick="switchTab('deb')">Ubuntu / Debian</div>
+                </div>
+                
+                <div id="tab-rh" class="os-content active">
+                    <pre id="c-action-rh"></pre>
+                </div>
+                <div id="tab-deb" class="os-content">
+                    <pre id="c-action-deb"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const items = [{"vuln": "root 계정으로 직접 원격 접속이 허용될 경우, 무작위 대입 공격(Brute Force)을 통해 패스워드가 뚫리면 시스템 최고 권한을 즉시 탈취당하게 됩니다.", "check": "SSH 설정 파일에서 PermitRootLogin 값을 확인합니다.", "check_cmd": "cat /etc/ssh/sshd_config | grep -i permitrootlogin", "check_ex": "# 결과 예시\nPermitRootLogin yes  <-- ❌ 취약 (허용됨)\nPermitRootLogin no   <-- ✅ 양호 (차단됨)", "action_rh": "vi /etc/ssh/sshd_config\n# PermitRootLogin 부분을 찾아 no로 변경\nPermitRootLogin no\n\n# SSH 데몬 재시작\nsystemctl restart sshd", "action_deb": "vi /etc/ssh/sshd_config\n# PermitRootLogin 부분을 찾아 no로 변경\nPermitRootLogin no\n\n# SSH 데몬 재시작 (데비안 계열은 데몬 이름이 ssh 입니다)\nsystemctl restart ssh", "warning": "🚨 [장애 주의] root 원격 접속을 차단하기 전에, 반드시 '일반 계정'으로 접속한 뒤 `su -` 또는 `sudo`를 통해 root로 권한 상승이 정상적으로 되는지 테스트하세요! 테스트 없이 막았다가 원격 접속이 영영 끊길 수 있습니다.", "id": "U-01", "title": "root 계정 원격 접속 제한"}, {"vuln": "비밀번호를 '1234'나 'password'처럼 단순하게 쓰면 크랙 도구에 단 몇 초 만에 뚫립니다.", "check": "PAM(Pluggable Authentication Modules) 설정 파일에서 비밀번호 복잡도 규칙이 있는지 확인합니다.", "check_cmd": "# RedHat/CentOS/Rocky\ncat /etc/security/pwquality.conf | grep -E 'minlen|dcredit|ucredit|lcredit|ocredit'\n\n# Ubuntu/Debian\ncat /etc/pam.d/common-password | grep pam_pwquality.so", "check_ex": "# 결과가 아예 없거나 모두 주석(#) 처리되어 있으면 취약합니다.", "action_rh": "vi /etc/security/pwquality.conf\n# 아래 내용 추가 (주석 해제 및 값 수정)\nminlen = 8    # 최소 8자리\ndcredit = -1  # 숫자 최소 1개\nucredit = -1  # 대문자 최소 1개\nlcredit = -1  # 소문자 최소 1개\nocredit = -1  # 특수문자 최소 1개", "action_deb": "apt-get install libpam-pwquality\nvi /etc/pam.d/common-password\n\n# 아래와 같이 모듈 라인 수정\npassword requisite pam_pwquality.so retry=3 minlen=8 dcredit=-1 ucredit=-1 lcredit=-1 ocredit=-1", "warning": "🚨 기존 사용자들의 비밀번호가 당장 바뀌지는 않습니다. 다음 비밀번호 변경 시점부터 규칙이 강제 적용됩니다.", "id": "U-02", "title": "패스워드 복잡성 설정"}, {"vuln": "비밀번호를 틀려도 무한정 다시 시도할 수 있으면 해커가 스크립트를 돌려 계정을 털어갑니다.", "check": "PAM 설정에서 로그인 실패 시 계정 잠금 모듈이 적용되어 있는지 확인합니다.", "check_cmd": "cat /etc/pam.d/system-auth | grep -E 'pam_faillock.so|pam_tally2.so'", "check_ex": "# 결과가 없으면 취약 (잠금 정책 없음)\nauth required pam_faillock.so deny=5 unlock_time=900  <-- ✅ 양호 (5회 실패 시 15분 잠금)", "action_rh": "vi /etc/pam.d/system-auth\n# 상단 추가\nauth required pam_faillock.so preauth silent audit deny=5 unlock_time=900\nauth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900", "action_deb": "vi /etc/pam.d/common-auth\n# 상단 추가\nauth required pam_faillock.so preauth silent audit deny=5 unlock_time=900\nauth [default=die] pam_faillock.so authfail audit deny=5 unlock_time=900", "warning": "🚨 `root` 계정까지 잠기게 설정하면, 해커가 고의로 root로 5번 틀려서 관리자의 접속을 막는 DoS 공격이 가능하므로 root는 예외 처리 권장.", "id": "U-03", "title": "계정 잠금 임계값 설정"}, {"id": "U-04", "title": "패스워드 파일 보호", "vuln": "[패스워드 파일 보호] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[패스워드 파일 보호] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-05", "title": "root 이외의 UID가 '0' 금지", "vuln": "[root 이외의 UID가 '0' 금지] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[root 이외의 UID가 '0' 금지] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-06", "title": "root 계정 su 제한", "vuln": "[root 계정 su 제한] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[root 계정 su 제한] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-07", "title": "패스워드 최소 길이 설정", "vuln": "[패스워드 최소 길이 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[패스워드 최소 길이 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"vuln": "동일한 패스워드를 계속 쓰면, 어디선가 유출되었을 때 방치될 위험이 매우 큽니다.", "check": "사용자 생성 시 적용되는 기본 비밀번호 사용 기간 설정을 확인합니다.", "check_cmd": "cat /etc/login.defs | grep PASS_MAX_DAYS", "check_ex": "PASS_MAX_DAYS   99999   <-- ❌ 취약 (무제한)\nPASS_MAX_DAYS   90      <-- ✅ 양호 (90일마다 변경 강제)", "action_rh": "vi /etc/login.defs\n# PASS_MAX_DAYS 값을 90으로 변경\nPASS_MAX_DAYS   90", "action_deb": "vi /etc/login.defs\n# PASS_MAX_DAYS 값을 90으로 변경\nPASS_MAX_DAYS   90", "warning": "🚨 [매우 중요] /etc/login.defs를 수정해도 '앞으로 생성될 신규 계정'에만 적용됩니다. 기존 계정들은 `chage -M 90 [계정명]` 수동 적용 필수!", "id": "U-08", "title": "패스워드 최대 사용 기간 설정"}, {"id": "U-09", "title": "패스워드 최소 사용 기간 설정", "vuln": "[패스워드 최소 사용 기간 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[패스워드 최소 사용 기간 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-10", "title": "불필요한 계정 제거", "vuln": "[불필요한 계정 제거] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[불필요한 계정 제거] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-11", "title": "관리자 그룹에 최소한의 계정 포함", "vuln": "[관리자 그룹에 최소한의 계정 포함] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[관리자 그룹에 최소한의 계정 포함] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-12", "title": "계정이 존재하지 않는 GID 금지", "vuln": "[계정이 존재하지 않는 GID 금지] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[계정이 존재하지 않는 GID 금지] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-13", "title": "동일한 UID 금지", "vuln": "[동일한 UID 금지] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[동일한 UID 금지] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-14", "title": "사용자 shell 점검", "vuln": "[사용자 shell 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[사용자 shell 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-15", "title": "Session Timeout 설정", "vuln": "[Session Timeout 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[Session Timeout 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-16", "title": "root 홈, 패스 디렉터리 권한 및 패스 설정", "vuln": "[root 홈, 패스 디렉터리 권한 및 패스 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[root 홈, 패스 디렉터리 권한 및 패스 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-17", "title": "파일 및 디렉터리 소유자 설정", "vuln": "[파일 및 디렉터리 소유자 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[파일 및 디렉터리 소유자 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"vuln": "SSH나 FTP 포트를 전 세계(0.0.0.0)에 오픈해두면, 온갖 국가에서 봇넷을 통해 해킹 시도가 들어옵니다.", "check": "TCP Wrapper 또는 OS 방화벽에 IP 제한이 걸려있는지 확인합니다.", "check_cmd": "cat /etc/hosts.deny\ncat /etc/hosts.allow\nfirewall-cmd --list-all  # RedHat\nufw status               # Debian", "check_ex": "# hosts.deny가 비어있거나, 방화벽 Inbound가 ANY로 열려있으면 취약", "action_rh": "echo 'ALL : ALL' >> /etc/hosts.deny\necho 'sshd : 192.168.1.0/24' >> /etc/hosts.allow\n# Firewalld 사용시:\nfirewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"192.168.1.10\" port port=\"22\" protocol=\"tcp\" accept'", "action_deb": "echo 'ALL : ALL' >> /etc/hosts.deny\necho 'sshd : 192.168.1.0/24' >> /etc/hosts.allow\n# UFW 사용시:\nufw deny 22/tcp\nufw allow from 192.168.1.10 to any port 22", "warning": "🚨 차단 룰을 먼저 넣으면 현재 접속된 SSH 세션도 끊길 수 있습니다. 반드시 허용(Allow) 룰을 먼저 세팅하세요.", "id": "U-18", "title": "접속 IP 및 포트 제한"}, {"id": "U-19", "title": "Finger 서비스 비활성화", "vuln": "[Finger 서비스 비활성화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[Finger 서비스 비활성화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-20", "title": "Anonymous FTP 비활성화", "vuln": "[Anonymous FTP 비활성화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[Anonymous FTP 비활성화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-21", "title": "r 계열 서비스 비활성화", "vuln": "[r 계열 서비스 비활성화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[r 계열 서비스 비활성화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-22", "title": "cron 파일 소유자 및 권한 설정", "vuln": "[cron 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[cron 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-23", "title": "DoS 공격에 취약한 서비스 비활성화", "vuln": "[DoS 공격에 취약한 서비스 비활성화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[DoS 공격에 취약한 서비스 비활성화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-24", "title": "NFS 서비스 비활성화", "vuln": "[NFS 서비스 비활성화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[NFS 서비스 비활성화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-25", "title": "NFS 접근 통제", "vuln": "[NFS 접근 통제] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[NFS 접근 통제] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-26", "title": "automountd 제거", "vuln": "[automountd 제거] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[automountd 제거] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-27", "title": "RPC 서비스 확인", "vuln": "[RPC 서비스 확인] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[RPC 서비스 확인] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-28", "title": "NIS, NIS+ 점검", "vuln": "[NIS, NIS+ 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[NIS, NIS+ 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-29", "title": "tftp, talk 서비스 비활성화", "vuln": "[tftp, talk 서비스 비활성화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[tftp, talk 서비스 비활성화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-30", "title": "Sendmail 버전 점검", "vuln": "[Sendmail 버전 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[Sendmail 버전 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-31", "title": "스팸 메일 릴레이 제한", "vuln": "[스팸 메일 릴레이 제한] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[스팸 메일 릴레이 제한] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-32", "title": "일반 사용자의 Sendmail 실행 방지", "vuln": "[일반 사용자의 Sendmail 실행 방지] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[일반 사용자의 Sendmail 실행 방지] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-33", "title": "DNS 보안 버전 패치", "vuln": "[DNS 보안 버전 패치] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[DNS 보안 버전 패치] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-34", "title": "DNS Zone Transfer 설정", "vuln": "[DNS Zone Transfer 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[DNS Zone Transfer 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-35", "title": "로그의 정기적 검토 및 보고", "vuln": "[로그의 정기적 검토 및 보고] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[로그의 정기적 검토 및 보고] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-36", "title": "root 이외의 suid, sgid 권한 설정된 파일 점검", "vuln": "[root 이외의 suid, sgid 권한 설정된 파일 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[root 이외의 suid, sgid 권한 설정된 파일 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-37", "title": "패스워드 일방향 암호화", "vuln": "[패스워드 일방향 암호화] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[패스워드 일방향 암호화] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-38", "title": "suid, sgid, sticky bit 설정 점검", "vuln": "[suid, sgid, sticky bit 설정 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[suid, sgid, sticky bit 설정 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-39", "title": "/dev 디렉터리에 존재하지 않는 device 파일 점검", "vuln": "[/dev 디렉터리에 존재하지 않는 device 파일 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/dev 디렉터리에 존재하지 않는 device 파일 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-40", "title": "환경변수 파일 소유자 및 권한 설정", "vuln": "[환경변수 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[환경변수 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-41", "title": "world writable 파일 점검", "vuln": "[world writable 파일 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[world writable 파일 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-42", "title": "/etc/hosts 파일 소유자 및 권한 설정", "vuln": "[/etc/hosts 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/hosts 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-43", "title": "/etc/services 파일 소유자 및 권한 설정", "vuln": "[/etc/services 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/services 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-44", "title": "SUID, SGID 설정 파일 점검", "vuln": "[SUID, SGID 설정 파일 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[SUID, SGID 설정 파일 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-45", "title": "/etc/passwd 파일 소유자 및 권한 설정", "vuln": "[/etc/passwd 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/passwd 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-46", "title": "/etc/shadow 파일 소유자 및 권한 설정", "vuln": "[/etc/shadow 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/shadow 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-47", "title": "/etc/hosts.equiv 및 .rhosts 파일 권한 설정", "vuln": "[/etc/hosts.equiv 및 .rhosts 파일 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/hosts.equiv 및 .rhosts 파일 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-48", "title": "ftpusers 파일 소유자 및 권한 설정", "vuln": "[ftpusers 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[ftpusers 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-49", "title": "ftp 접근제어 파일 권한 설정", "vuln": "[ftp 접근제어 파일 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[ftp 접근제어 파일 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-50", "title": "sshd_config 파일 소유자 및 권한 설정", "vuln": "[sshd_config 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[sshd_config 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-51", "title": "syslog.conf 파일 소유자 및 권한 설정", "vuln": "[syslog.conf 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[syslog.conf 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-52", "title": "/etc/issue 파일 권한 설정", "vuln": "[/etc/issue 파일 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/issue 파일 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-53", "title": "/etc/profile 파일 권한 설정", "vuln": "[/etc/profile 파일 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[/etc/profile 파일 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-54", "title": "inetd.conf 파일 소유자 및 권한 설정", "vuln": "[inetd.conf 파일 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[inetd.conf 파일 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-55", "title": "최신 보안 패치 및 벤더 권고사항 적용", "vuln": "[최신 보안 패치 및 벤더 권고사항 적용] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[최신 보안 패치 및 벤더 권고사항 적용] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-56", "title": "FTP 서비스 확인", "vuln": "[FTP 서비스 확인] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[FTP 서비스 확인] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-57", "title": "ftp 접근제어", "vuln": "[ftp 접근제어] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[ftp 접근제어] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-58", "title": "shell 제한", "vuln": "[shell 제한] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[shell 제한] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-59", "title": "root 계정 원격 FTP 접속 제한", "vuln": "[root 계정 원격 FTP 접속 제한] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[root 계정 원격 FTP 접속 제한] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-60", "title": "불필요한 RPC 서비스 점검", "vuln": "[불필요한 RPC 서비스 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[불필요한 RPC 서비스 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-61", "title": "SNMP 서비스 구동 점검", "vuln": "[SNMP 서비스 구동 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[SNMP 서비스 구동 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-62", "title": "SNMP Community String 설정", "vuln": "[SNMP Community String 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[SNMP Community String 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-63", "title": "홈 디렉터리 소유자 및 권한 설정", "vuln": "[홈 디렉터리 소유자 및 권한 설정] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[홈 디렉터리 소유자 및 권한 설정] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}, {"id": "U-64", "title": "숨겨진 파일 및 디렉터리 점검", "vuln": "[숨겨진 파일 및 디렉터리 점검] 보안 설정이 미흡할 경우 시스템 주요 파일 변조, 서비스 무력화(DoS), 혹은 비인가 권한 상승 공격에 노출될 수 있습니다.", "check": "[숨겨진 파일 및 디렉터리 점검] 관련 시스템 설정 파일 및 서비스 구동 상태를 점검합니다.", "check_cmd": "# 관련 설정 파일 또는 프로세스 점검\nls -l /etc/관련파일.conf\nps -ef | grep 관련프로세스", "check_ex": "# 권한이 과도하게 부여되어 있거나(예: 777), 불필요한 서비스가 Active 상태일 경우 취약", "action_rh": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "action_deb": "# 취약 설정 파일의 권한 회수 및 불필요 데몬 중지\nchmod 644 /etc/관련파일.conf\nsystemctl stop 불필요서비스\nsystemctl disable 불필요서비스", "warning": "🚨 [운영 환경 주의] 시스템 및 애플리케이션의 의존성을 꼼꼼히 파악하지 않고 데몬을 내릴 경우, 실 서비스 장애를 유발할 수 있으므로 테스트 서버에서 먼저 검증하세요."}];
+        
+        const listEl = document.getElementById('item-list');
+        const searchInput = document.getElementById('searchInput');
+        const emptyState = document.getElementById('empty-state');
+        const card = document.getElementById('card');
+
+        function renderList(filter = '') {
+            listEl.innerHTML = '';
+            const filtered = items.filter(i => i.id.toLowerCase().includes(filter.toLowerCase()) || i.title.toLowerCase().includes(filter.toLowerCase()));
+            
+            filtered.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.innerHTML = `<span class="item-id">${item.id}</span> <span class="item-title-text">${item.title}</span>`;
+                
+                li.onclick = () => {
+                    document.querySelectorAll('.list-item').forEach(e => e.classList.remove('active'));
+                    li.classList.add('active');
+                    show(item);
+                };
+                listEl.appendChild(li);
+            });
+        }
+
+        function show(item) {
+            emptyState.style.display = 'none';
+            card.classList.remove('show');
+            
+            setTimeout(() => {
+                document.getElementById('c-id').textContent = item.id;
+                document.getElementById('c-title').textContent = item.title;
+                document.getElementById('c-vuln').textContent = item.vuln;
+                document.getElementById('c-check').textContent = item.check;
+                document.getElementById('c-check-cmd').textContent = item.check_cmd;
+                document.getElementById('c-check-ex').textContent = item.check_ex;
+                document.getElementById('c-action-rh').textContent = item.action_rh;
+                document.getElementById('c-action-deb').textContent = item.action_deb;
+                
+                const warnBox = document.getElementById('c-warning');
+                if (item.warning) {
+                    warnBox.style.display = 'block';
+                    warnBox.textContent = item.warning;
+                } else {
+                    warnBox.style.display = 'none';
+                }
+                
+                // Reset tab to RedHat by default
+                switchTab('rh');
+                card.classList.add('show');
+            }, 10);
+        }
+
+        function switchTab(os) {
+            document.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.os-content').forEach(c => c.classList.remove('active'));
+            
+            if (os === 'rh') {
+                document.querySelectorAll('.os-tab')[0].classList.add('active');
+                document.getElementById('tab-rh').classList.add('active');
+            } else {
+                document.querySelectorAll('.os-tab')[1].classList.add('active');
+                document.getElementById('tab-deb').classList.add('active');
+            }
+        }
+
+        searchInput.addEventListener('input', e => renderList(e.target.value));
+        renderList();
+    </script>
+</body>
+</html>
